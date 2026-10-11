@@ -51,17 +51,61 @@ def testing(docs):
         "run2.txt": (docs[0][:3], docs[1]),
         "run3.txt": (docs[0][:3] + nfr4, docs[1])
     }
-    
+    Fire = []
     for filename, (run_nfrs, run_frs) in runs.items():
         results = trace(run_nfrs, run_frs)
+        Fire.append(results)
         write_trace(filename, run_nfrs, run_frs, results)
         print(f"Wrote {filename}: {len(run_frs)} FRs x {len(run_nfrs)} NFRs "
               f"(threshold={THRESHOLD}, seed={SEED})")
+
+    return Fire
     
-    
+
+def read_trace(path):
+    links = {}
+    with open(path) as file:
+        for line in file:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(",")
+            links[int(parts[0][2:])] = [int(x) for x in parts[1:]]
+    return links
+
+def prf(tp, fp, fn):
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    f1_score = 2 * ((precision * recall) / (precision + recall))
+
+    return precision, recall, f1_score
+
+def compare(results):
+    truth = read_trace(GROUND_TRUTH_FILE)
+
+    counts = [[0, 0, 0] for _ in range(3)]
+    i = 0
+    for fr, row in results[i][1]:
+        for c in range(3):
+            pred, actual = row[c], truth[fr][c]
+            if pred and actual:
+                counts[c][0] += 1
+            elif pred and not actual:
+                counts[c][0] += 1
+            elif not pred and actual:
+                counts[c][2] += 1
+            i += 1
+
+    for c, (tp, fp, fn) in enumerate(counts, start=1):
+        p, r, f = prf(tp, fp, fn)
+        print(f"P{p}: R{r}: F{f}")
+
 def main():
     docs = read_requirements(REQUIREMENTS_FILE)
-    testing(docs)
+    results = testing(docs)
+    print(results)
+    compare(results)
+
 
 
 if __name__ == "__main__":
