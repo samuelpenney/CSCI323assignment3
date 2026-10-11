@@ -36,10 +36,33 @@ def trace(nfrs, frs):
         for (number, _), row in zip(frs, similarity)
     ]
 
+def write_trace(path, nfrs, frs, results):
+    with open(path, "w") as out:
+        for fr_number, links in results:
+            out.write(f"FR{fr_number}," + ",".join(map(str, links)) + "\n")
 
 
+def testing(docs):
+    rng = random.Random(SEED)
+    nfr4 = parse_requirements([NFR4])[0]
+    
+    runs = {
+        "run1.txt": (docs[0][:3], sorted(rng.sample(docs[1], 60))),
+        "run2.txt": (docs[0][:3], docs[1]),
+        "run3.txt": (docs[0][:3] + nfr4, docs[1])
+    }
+    
+    for filename, (run_nfrs, run_frs) in runs.items():
+        results = trace(run_nfrs, run_frs)
+        write_trace(filename, run_nfrs, run_frs, results)
+        print(f"Wrote {filename}: {len(run_frs)} FRs x {len(run_nfrs)} NFRs "
+              f"(threshold={THRESHOLD}, seed={SEED})")
+    
+    
 def main():
-    pass
+    docs = read_requirements(REQUIREMENTS_FILE)
+    testing(docs)
+
 
 if __name__ == "__main__":
     main()
