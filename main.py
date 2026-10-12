@@ -1,3 +1,7 @@
+# ----------------------------------
+# Samuel Penney & Claudia Dunlop
+# Github repo: https://github.com/samuelpenney/CSCI323assignment3
+# ----------------------------------
 import random
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
@@ -13,6 +17,7 @@ STOP_WORDS = list(ENGLISH_STOP_WORDS | {"system", "shall", "user", "users"})
 def read_requirements(path):
     with open(path, "r") as file:
         lines = [line.strip() for line in file if line.strip()]
+        
     return parse_requirements(lines)
 
 def parse_requirements(lines):
@@ -31,11 +36,7 @@ def trace(nfrs, frs):
     docs = [text for _, text in nfrs] + [text for _, text in frs]
     matrix = TfidfVectorizer(stop_words="english").fit_transform(docs)
     similarity = cosine_similarity(matrix[len(nfrs):], matrix[:len(nfrs)])
-    return [
-        (number, [int(score >= THRESHOLDS[nfr_num])
-                  for (nfr_num, _), score in zip(nfrs, row)])
-        for (number, _), row in zip(frs, similarity)
-    ]
+    return [(number, [int(score >= THRESHOLDS[nfr_num]) for (nfr_num, _), score in zip(nfrs, row)]) for (number, _), row in zip(frs, similarity)]
 
 def write_trace(path, nfrs, frs, results):
     with open(path, "w") as out:
@@ -46,24 +47,22 @@ def write_trace(path, nfrs, frs, results):
 def testing(docs):
     rng = random.Random(SEED)
     nfr4 = parse_requirements([NFR4])[0]
-    
-    runs = {
-        "run1.txt": (docs[0][:3], sorted(rng.sample(docs[1], 60))),
-        "run2.txt": (docs[0][:3], docs[1]),
-        "run3.txt": (docs[0][:3] + nfr4, docs[1])
-    }
+
+    runs = {"run1.txt": (docs[0][:3], sorted(rng.sample(docs[1], 60))), "run2.txt": (docs[0][:3], docs[1]), "run3.txt": (docs[0][:3] + nfr4, docs[1])}
     Fire = []
     for filename, (run_nfrs, run_frs) in runs.items():
         results = trace(run_nfrs, run_frs)
         Fire.append(results)
         write_trace(filename, run_nfrs, run_frs, results)
         print(f"Wrote {filename}: {len(run_frs)} FRs x {len(run_nfrs)} NFRs ")
-
+        
+        
     return Fire
     
 
 def read_trace(path):
     links = {}
+    
     with open(path) as file:
         for line in file:
             line = line.strip()
@@ -71,6 +70,7 @@ def read_trace(path):
                 continue
             parts = line.split(",")
             links[int(parts[0][2:])] = [int(x) for x in parts[1:]]
+            
     return links
 
 def prf(tp, fp, fn):
@@ -94,10 +94,10 @@ def compare(results, runs):
                 counts[c][2] += 1
 
     print(f"\nRun {runs + 1}")
+    
     for c, (tp, fp, fn) in enumerate(counts, start=1):
         p, r, f = prf(tp, fp, fn)
         print(f"NFR{c}: Precision={p:.3f}, Recall={r:.3f}, F1={f:.3f}")
-
     tp, fp, fn = (sum(count[c] for count in counts) for c in range(3))
     p, r, f = prf(tp, fp, fn)
     print(f"Overall: Precision={p:.3f}, Recall={r:.3f}, F1={f:.3f}")
