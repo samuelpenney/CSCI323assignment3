@@ -2,8 +2,9 @@ import random
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
 from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 REQUIREMENTS_FILE = "requirements-3nfr-80fr-2.txt"
-THRESHOLD = 0.06
+THRESHOLDS = {1: 0.108, 2: 0.008, 3: 0.184, 4: 0.10}
 SEED = 323
 GROUND_TRUTH_FILE = "trace-3nfr-to-80fr-1.txt"
 NFR4 = "NFR4 (Performance): The system shall return search results within 5 seconds."
@@ -13,7 +14,6 @@ def read_requirements(path):
     with open(path, "r") as file:
         lines = [line.strip() for line in file if line.strip()]
     return parse_requirements(lines)
-
 
 def parse_requirements(lines):
     nfrs, frs = [], []
@@ -29,10 +29,11 @@ def parse_requirements(lines):
 
 def trace(nfrs, frs):
     docs = [text for _, text in nfrs] + [text for _, text in frs]
-    matrix = TfidfVectorizer(stop_words=STOP_WORDS, sublinear_tf=True, ngram_range=(1,2)).fit_transform(docs)
+    matrix = TfidfVectorizer(stop_words="english").fit_transform(docs)
     similarity = cosine_similarity(matrix[len(nfrs):], matrix[:len(nfrs)])
     return [
-        (number, [int(score >= THRESHOLD) for score in row])
+        (number, [int(score >= THRESHOLDS[nfr_num])
+                  for (nfr_num, _), score in zip(nfrs, row)])
         for (number, _), row in zip(frs, similarity)
     ]
 
@@ -56,8 +57,7 @@ def testing(docs):
         results = trace(run_nfrs, run_frs)
         Fire.append(results)
         write_trace(filename, run_nfrs, run_frs, results)
-        print(f"Wrote {filename}: {len(run_frs)} FRs x {len(run_nfrs)} NFRs "
-              f"(threshold={THRESHOLD}, seed={SEED})")
+        print(f"Wrote {filename}: {len(run_frs)} FRs x {len(run_nfrs)} NFRs ")
 
     return Fire
     
@@ -82,11 +82,10 @@ def prf(tp, fp, fn):
 def compare(results, runs):
     truth = read_trace(GROUND_TRUTH_FILE)
 
-    #counts = [[0, 0, 0] for _ in range(3)]
     counts = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
     for fr, row in results[runs]:
-        for c in range(3):
-            pred, actual = row[c], truth[fr][c]
+        for c, actual in enumerate(truth[fr]):
+            pred = row[c]
             if pred and actual:
                 counts[c][0] += 1
             elif pred and not actual:
@@ -97,7 +96,11 @@ def compare(results, runs):
     print(f"\nRun {runs + 1}")
     for c, (tp, fp, fn) in enumerate(counts, start=1):
         p, r, f = prf(tp, fp, fn)
-    print(f"P{p}: R{r}: F{f}")
+        print(f"NFR{c}: Precision={p:.3f}, Recall={r:.3f}, F1={f:.3f}")
+
+    tp, fp, fn = (sum(count[c] for count in counts) for c in range(3))
+    p, r, f = prf(tp, fp, fn)
+    print(f"Overall: Precision={p:.3f}, Recall={r:.3f}, F1={f:.3f}")
 
 def main():
     docs = read_requirements(REQUIREMENTS_FILE)
