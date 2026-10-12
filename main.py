@@ -74,37 +74,36 @@ def read_trace(path):
     return links
 
 def prf(tp, fp, fn):
-    precision = tp / (tp + fp)
-    recall = tp / (tp + fn)
-    f1_score = 2 * ((precision * recall) / (precision + recall))
-
+    precision = tp / (tp + fp) if tp + fp else 0.0
+    recall = tp / (tp + fn) if tp + fn else 0.0
+    f1_score = 2 * ((precision * recall) / (precision + recall)) if precision + recall else 0.0
     return precision, recall, f1_score
 
-def compare(results):
+def compare(results, runs):
     truth = read_trace(GROUND_TRUTH_FILE)
 
-    counts = [[0, 0, 0] for _ in range(3)]
-    i = 0
-    for fr, row in results[i][1]:
+    #counts = [[0, 0, 0] for _ in range(3)]
+    counts = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+    for fr, row in results[runs]:
         for c in range(3):
             pred, actual = row[c], truth[fr][c]
             if pred and actual:
                 counts[c][0] += 1
             elif pred and not actual:
-                counts[c][0] += 1
+                counts[c][1] += 1
             elif not pred and actual:
                 counts[c][2] += 1
-            i += 1
 
+    print(f"\nRun {runs + 1}")
     for c, (tp, fp, fn) in enumerate(counts, start=1):
         p, r, f = prf(tp, fp, fn)
-        print(f"P{p}: R{r}: F{f}")
+    print(f"P{p}: R{r}: F{f}")
 
 def main():
     docs = read_requirements(REQUIREMENTS_FILE)
     results = testing(docs)
-    print(results)
-    compare(results)
+    for i in range(3):
+        compare(results, i)
 
 
 
