@@ -1,13 +1,13 @@
 import random
 import re
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
 from sklearn.metrics.pairwise import cosine_similarity
 REQUIREMENTS_FILE = "requirements-3nfr-80fr-2.txt"
-THRESHOLD = 0.12
+THRESHOLD = 0.06
 SEED = 323
 GROUND_TRUTH_FILE = "trace-3nfr-to-80fr-1.txt"
 NFR4 = "NFR4 (Performance): The system shall return search results within 5 seconds."
-
+STOP_WORDS = list(ENGLISH_STOP_WORDS | {"system", "shall", "user", "users"})
 
 def read_requirements(path):
     with open(path, "r") as file:
@@ -29,7 +29,7 @@ def parse_requirements(lines):
 
 def trace(nfrs, frs):
     docs = [text for _, text in nfrs] + [text for _, text in frs]
-    matrix = TfidfVectorizer().fit_transform(docs)
+    matrix = TfidfVectorizer(stop_words=STOP_WORDS, sublinear_tf=True, ngram_range=(1,2)).fit_transform(docs)
     similarity = cosine_similarity(matrix[len(nfrs):], matrix[:len(nfrs)])
     return [
         (number, [int(score >= THRESHOLD) for score in row])
