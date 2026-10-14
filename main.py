@@ -8,10 +8,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 REQUIREMENTS_FILE = "requirements-3nfr-80fr-2.txt"
+EVALUATE_FILES = ["run1_requirements_3nfr_60fr.txt", "run2_requirements_3nf_80fr.txt", "run3_requirements_4nfr_80fr.txt"]
 THRESHOLDS = {1: 0.108, 2: 0.008, 3: 0.184, 4: 0.10}
 SEED = 323
 GROUND_TRUTH_FILE = "trace-3nfr-to-80fr-1.txt"
-NFR4 = "NFR4 (Performance): The system shall return search results within 5 seconds."
+NFR4 = "NFR4 (Usability): Users shall feel satisfied using the system. 85% of all users will be satisfied with the system."
 STOP_WORDS = list(ENGLISH_STOP_WORDS | {"system", "shall", "user", "users"})
 
 def read_requirements(path):
@@ -59,6 +60,13 @@ def testing(docs):
         
     return Fire
     
+def evaluate(docs):
+    runs = {"evaluate1.txt": (docs[0][0][:3], docs[0][1]), "evaluate2.txt": (docs[1][0][:3], docs[1][1]), "evaluate3.txt": (docs[2][0][:5], docs[2][1])}
+    
+    for filename, (run_nfrs, run_frs) in runs.items():
+        results = trace(run_nfrs, run_frs)
+        write_trace(filename, run_nfrs, run_frs, results)
+        print(f"Wrote { filename}: {len(run_frs)} FRs x {len(run_nfrs)} NFRs ")
 
 def read_trace(path):
     links = {}
@@ -104,9 +112,12 @@ def compare(results, runs):
 
 def main():
     docs = read_requirements(REQUIREMENTS_FILE)
+    evalDocs =  [read_requirements(i) for i in EVALUATE_FILES]
+    evaluate(evalDocs)
     results = testing(docs)
     for i in range(3):
         compare(results, i)
+    
 
 
 
